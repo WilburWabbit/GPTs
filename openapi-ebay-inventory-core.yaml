@@ -1,10 +1,14 @@
 openapi: 3.1.0
 info:
-  title: eBay Inventory – Core (Items, Compatibility, Groups, Listing SKU Mappings)
-  version: 0.1.3
+  title: eBay Inventory API (Core)
+  version: 1.0.0
+  description: >
+    Manage inventory items, compatibility, item groups, and SKU mappings
+    using eBay's Sell Inventory API.
+
 servers:
   - url: https://api.ebay.com/sell/inventory/v1
-    description: Production
+    description: eBay Production Server
 
 components:
   securitySchemes:
@@ -21,76 +25,59 @@ components:
   schemas:
     InventoryItem:
       type: object
-      required: [sku]
+      required:
+        - sku
       properties:
-        sku: { type: string, description: Seller-defined SKU }
-        locale: { type: string, description: BCP-47 tag }
+        sku:
+          type: string
+          description: "Seller-defined SKU"
+        locale:
+          type: string
+          description: "BCP-47 tag, e.g., en-GB"
         product:
           type: object
           properties:
-            title: { type: string }
-            description: { type: string }
-            brand: { type: string }
-            mpn: { type: string }
-            ean: { type: string }
+            title:
+              type: string
+            description:
+              type: string
+            brand:
+              type: string
+            mpn:
+              type: string
+            ean:
+              type: string
         availability:
           type: object
           properties:
             shipToLocationAvailability:
               type: object
               properties:
-                quantity: { type: integer }
+                quantity:
+                  type: integer
 
     BulkInventoryItemRequest:
       type: object
-      required: [requests]
+      required:
+        - requests
       properties:
         requests:
           type: array
           items:
-            type: object
-            properties:
-              sku: { type: string }
-              locale: { type: string }
-              product:
-                type: object
-                properties:
-                  title: { type: string }
-              availability:
-                type: object
-                properties:
-                  shipToLocationAvailability:
-                    type: object
-                    properties:
-                      quantity: { type: integer }
-
-    BulkInventoryItemResponse:
-      type: object
-      properties:
-        responses:
-          type: array
-          items:
-            type: object
-            properties:
-              sku: { type: string }
-              statusCode: { type: integer }
-              errors:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    message: { type: string }
+            $ref: '#/components/schemas/InventoryItem'
 
     BulkGetInventoryItemRequest:
       type: object
-      required: [requests]
+      required:
+        - requests
       properties:
         requests:
           type: array
           items:
             type: object
             properties:
-              sku: { type: string }
+              sku:
+                type: string
 
     ProductCompatibilityRequest:
       type: object
@@ -100,16 +87,22 @@ components:
           items:
             type: object
             properties:
-              make: { type: string }
-              model: { type: string }
-              year: { type: string }
+              make:
+                type: string
+              model:
+                type: string
+              year:
+                type: string
 
     InventoryItemGroup:
       type: object
       properties:
-        inventoryItemGroupKey: { type: string }
-        title: { type: string }
-        description: { type: string }
+        inventoryItemGroupKey:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
 
     SkuLocationMapping:
       type: object
@@ -119,18 +112,21 @@ components:
           items:
             type: object
             properties:
-              merchantLocationKey: { type: string }
-              quantity: { type: integer }
+              merchantLocationKey:
+                type: string
+              quantity:
+                type: integer
 
 security:
   - ebay_oauth:
-    - https://api.ebay.com/oauth/api_scope/sell.inventory
+      - https://api.ebay.com/oauth/api_scope/sell.inventory
+      - https://api.ebay.com/oauth/api_scope/sell.inventory.readonly
 
 paths:
   /inventory_item:
     get:
       operationId: getInventoryItems
-      summary: Get inventory items
+      summary: Get all inventory items
       responses:
         '200':
           description: OK
@@ -141,18 +137,26 @@ paths:
                 properties:
                   inventoryItems:
                     type: array
-                    items: { $ref: '#/components/schemas/InventoryItem' }
+                    items:
+                      $ref: '#/components/schemas/InventoryItem'
 
   /inventory_item/{sku}:
     get:
       operationId: getInventoryItem
       summary: Get an inventory item
+      parameters:
+        - name: sku
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         '200':
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/InventoryItem' }
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
     put:
       operationId: createOrReplaceInventoryItem
       summary: Create or replace inventory item
@@ -160,15 +164,25 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/InventoryItem' }
+            schema:
+              $ref: '#/components/schemas/InventoryItem'
       responses:
-        '200': { description: Updated }
-        '201': { description: Created }
+        '200':
+          description: Updated
+        '201':
+          description: Created
     delete:
       operationId: deleteInventoryItem
       summary: Delete an inventory item
+      parameters:
+        - name: sku
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
-        '204': { description: No Content }
+        '204':
+          description: No Content
 
   /bulk_create_or_replace_inventory_item:
     post:
@@ -178,13 +192,11 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/BulkInventoryItemRequest' }
+            schema:
+              $ref: '#/components/schemas/BulkInventoryItemRequest'
       responses:
         '200':
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/BulkInventoryItemResponse' }
+          description: Bulk operation completed
 
   /bulk_get_inventory_item:
     post:
@@ -194,10 +206,11 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/BulkGetInventoryItemRequest' }
+            schema:
+              $ref: '#/components/schemas/BulkGetInventoryItemRequest'
       responses:
         '200':
-          description: OK
+          description: Bulk inventory lookup response
           content:
             application/json:
               schema:
@@ -208,33 +221,24 @@ paths:
                     items:
                       type: object
                       properties:
-                        sku: { type: string }
-                        inventoryItem: { $ref: '#/components/schemas/InventoryItem' }
-
-  /bulk_migrate_listing:
-    post:
-      operationId: bulkMigrateListing
-      summary: Bulk migrate legacy listings to inventory model
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                listingIds:
-                  type: array
-                  items: { type: string }
-      responses:
-        '200': { description: OK }
+                        sku:
+                          type: string
+                        inventoryItem:
+                          $ref: '#/components/schemas/InventoryItem'
 
   /inventory_item/{sku}/product_compatibility:
     get:
       operationId: getProductCompatibility
       summary: Get product compatibility for a SKU
+      parameters:
+        - name: sku
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         '200':
-          description: OK
+          description: Compatible products
           content:
             application/json:
               schema:
@@ -245,9 +249,12 @@ paths:
                     items:
                       type: object
                       properties:
-                        make: { type: string }
-                        model: { type: string }
-                        year: { type: string }
+                        make:
+                          type: string
+                        model:
+                          type: string
+                        year:
+                          type: string
     put:
       operationId: createOrReplaceProductCompatibility
       summary: Create or replace product compatibility for a SKU
@@ -255,65 +262,118 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/ProductCompatibilityRequest' }
+            schema:
+              $ref: '#/components/schemas/ProductCompatibilityRequest'
       responses:
-        '200': { description: Updated }
-        '201': { description: Created }
+        '200':
+          description: Updated
+        '201':
+          description: Created
     delete:
       operationId: deleteProductCompatibility
       summary: Delete product compatibility for a SKU
+      parameters:
+        - name: sku
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
-        '204': { description: No Content }
+        '204':
+          description: No Content
 
   /inventory_item_group/{inventoryItemGroupKey}:
     get:
       operationId: getInventoryItemGroup
       summary: Get an inventory item group
+      parameters:
+        - name: inventoryItemGroupKey
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         '200':
-          description: OK
+          description: Item group found
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/InventoryItemGroup' }
+              schema:
+                $ref: '#/components/schemas/InventoryItemGroup'
     put:
       operationId: createOrReplaceInventoryItemGroup
-      summary: Create or replace an inventory item group
+      summary: Create or update an inventory item group
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/InventoryItemGroup' }
+            schema:
+              $ref: '#/components/schemas/InventoryItemGroup'
       responses:
-        '200': { description: Updated }
-        '201': { description: Created }
+        '200':
+          description: Updated
+        '201':
+          description: Created
     delete:
       operationId: deleteInventoryItemGroup
       summary: Delete an inventory item group
+      parameters:
+        - name: inventoryItemGroupKey
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
-        '204': { description: No Content }
+        '204':
+          description: No Content
 
   /listing/{listingId}/sku/{sku}/locations:
     get:
       operationId: getSkuLocationMapping
       summary: Get SKU to location mappings for a listing
+      parameters:
+        - name: listingId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sku
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         '200':
-          description: OK
+          description: Mapping retrieved
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/SkuLocationMapping' }
+              schema:
+                $ref: '#/components/schemas/SkuLocationMapping'
     put:
       operationId: createOrReplaceSkuLocationMapping
-      summary: Create or replace SKU to location mappings for a listing
+      summary: Set SKU to location mappings for a listing
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/SkuLocationMapping' }
+            schema:
+              $ref: '#/components/schemas/SkuLocationMapping'
       responses:
-        '200': { description: OK }
+        '200':
+          description: Mapping saved
     delete:
       operationId: deleteSkuLocationMapping
-      summary: Delete SKU to location mappings for a listing
+      summary: Remove SKU to location mappings for a listing
+      parameters:
+        - name: listingId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sku
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
-        '204': { description: No Content }
+        '204':
+          description: No Content
