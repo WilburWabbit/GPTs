@@ -15,7 +15,7 @@
   },
   "api": {
     "type": "openapi",
-    "url": "https://drive.google.com/file/d/16nZSL6tC68JtNEUJAyQjon7n7AJm6nZm",
+    "url": "https://github.com/WilburWabbit/GPTs/blob/b87da9d02f9549941cabf06f4199d36772f6a6b0/openapi-ebay-inventory-core.yaml",
     "is_user_authenticated": true
   },
   "logo_url": "https://yourdomain.com/logo.png",
