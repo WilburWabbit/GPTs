@@ -1,5 +1,3 @@
-# name: ebay-inventory-core
-# version: 0.1.3
 openapi: 3.1.0
 info:
   title: eBay Inventory – Core (Items, Compatibility, Groups, Listing SKU Mappings)
