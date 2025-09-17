@@ -24,7 +24,7 @@ components:
       required: [sku]
       properties:
         sku: { type: string, description: Seller-defined SKU }
-        locale: { type: string, description: BCP-47 tag, e.g., en-GB }
+        locale: { type: string, description: BCP-47 tag }
         product:
           type: object
           properties:
