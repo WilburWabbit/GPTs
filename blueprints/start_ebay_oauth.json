@@ -1,0 +1,226 @@
+{
+  "metadata": {
+    "version": 2,
+    "designer": {
+      "layout": "horizontal"
+    }
+  },
+  "name": "Start eBay OAuth",
+  "description": "Exposes a webhook that GPT calls to obtain an eBay OAuth authorization URL or a cached access token.",
+  "main": true,
+  "modules": [
+    {
+      "id": 1,
+      "name": "Start auth webhook",
+      "type": "module",
+      "app": "webhook",
+      "action": "customWebhook",
+      "parameters": {
+        "hookName": "start_auth",
+        "payloadType": "json",
+        "respondImmediately": false,
+        "documentation": "Invoked by the GPT. Body should contain gpt_user_id, optional session_id, and requested scope list."
+      }
+    },
+    {
+      "id": 2,
+      "name": "Lookup existing tokens",
+      "type": "module",
+      "app": "datastore",
+      "action": "searchRecords",
+      "parameters": {
+        "datastoreId": "{{connections.tokens_store}}",
+        "query": {
+          "field": "key",
+          "relation": "equals",
+          "value": "{{1.body.gpt_user_id}}"
+        },
+        "limit": 1
+      }
+    },
+    {
+      "id": 3,
+      "name": "Token router",
+      "type": "router",
+      "routes": [
+        {
+          "id": "valid",
+          "name": "Tokens valid",
+          "filter": "{{ length(2) > 0 and parseDate( get(2[1]; 'expires_at') ) > addMinutes(now; 5) }}"
+        },
+        {
+          "id": "consent",
+          "name": "Consent required",
+          "filter": "{{ or(length(2) = 0; parseDate( get(2[1]; 'expires_at') ) <= addMinutes(now; 5)) }}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Build authorized payload",
+      "type": "module",
+      "app": "json",
+      "action": "createJSONObject",
+      "parameters": {
+        "structure": [
+          {
+            "name": "status",
+            "type": "text",
+            "value": "authorized"
+          },
+          {
+            "name": "access_token",
+            "type": "text",
+            "value": "{{ get(2[1]; 'access_token') }}"
+          },
+          {
+            "name": "expires_at",
+            "type": "text",
+            "value": "{{ get(2[1]; 'expires_at') }}"
+          },
+          {
+            "name": "scope",
+            "type": "array",
+            "value": "{{ split(get(2[1]; 'scope'); ' ') }}"
+          }
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "name": "Return authorized response",
+      "type": "module",
+      "app": "webhook",
+      "action": "customWebhookResponse",
+      "parameters": {
+        "statusCode": 200,
+        "body": "{{4.json}}",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "name": "Generate state",
+      "type": "module",
+      "app": "tools",
+      "action": "generateUuid",
+      "parameters": {}
+    },
+    {
+      "id": 7,
+      "name": "Compose authorization URL",
+      "type": "module",
+      "app": "tools",
+      "action": "composeString",
+      "parameters": {
+        "structure": "https://auth.ebay.com/oauth2/authorize?client_id={{connections.ebay_oauth.client_id}}&response_type=code&redirect_uri={{encodeURIComponent(connections.ebay_oauth.redirect_uri)}}&scope={{encodeURIComponent(join( if(isArray(1.body.scope); 1.body.scope; split(connections.ebay_oauth.default_scope; ' ')); ' '))}}&state={{6.uuid}}"
+      }
+    },
+    {
+      "id": 8,
+      "name": "Upsert state record",
+      "type": "module",
+      "app": "datastore",
+      "action": "createOrUpdateRecord",
+      "parameters": {
+        "datastoreId": "{{connections.tokens_store}}",
+        "key": "{{1.body.gpt_user_id}}",
+        "data": {
+          "access_token": "",
+          "refresh_token": "{{ get(2[1]; 'refresh_token') }}",
+          "expires_at": "",
+          "scope": "{{ join( if(isArray(1.body.scope); 1.body.scope; split(connections.ebay_oauth.default_scope; ' ')); ' ') }}",
+          "state": "{{6.uuid}}",
+          "updated_at": "{{ now }}"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "name": "Return consent response",
+      "type": "module",
+      "app": "webhook",
+      "action": "customWebhookResponse",
+      "parameters": {
+        "statusCode": 200,
+        "body": "{\"status\":\"consent_required\",\"authorization_url\":\"{{7.text}}\",\"state\":\"{{6.uuid}}\"}",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      }
+    }
+  ],
+  "links": [
+    {
+      "id": 1,
+      "from_module": 1,
+      "to_module": 2
+    },
+    {
+      "id": 2,
+      "from_module": 2,
+      "to_module": 3
+    },
+    {
+      "id": 3,
+      "from_module": 3,
+      "to_module": 4,
+      "route": "valid"
+    },
+    {
+      "id": 4,
+      "from_module": 4,
+      "to_module": 5,
+      "route": "valid"
+    },
+    {
+      "id": 5,
+      "from_module": 3,
+      "to_module": 6,
+      "route": "consent"
+    },
+    {
+      "id": 6,
+      "from_module": 6,
+      "to_module": 7,
+      "route": "consent"
+    },
+    {
+      "id": 7,
+      "from_module": 7,
+      "to_module": 8,
+      "route": "consent"
+    },
+    {
+      "id": 8,
+      "from_module": 8,
+      "to_module": 9,
+      "route": "consent"
+    }
+  ],
+  "connections": {
+    "tokens_store": {
+      "name": "tokens_store",
+      "type": "datastore"
+    },
+    "ebay_oauth": {
+      "name": "eBay OAuth Credentials",
+      "type": "connection",
+      "app": "http",
+      "fields": {
+        "client_id": "",
+        "client_secret": "",
+        "redirect_uri": "",
+        "default_scope": "https://api.ebay.com/oauth/api_scope"
+      }
+    }
+  }
+}
